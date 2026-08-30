@@ -9,6 +9,7 @@ export const TRAINERS: Record<string, Trainer> = {
     drills: [
       { id: 'wall', name: 'Wall' },
       { id: 'lane', name: 'Lane' },
+      { id: 'hook', name: 'Hook' },
     ],
   },
   '3bar': {

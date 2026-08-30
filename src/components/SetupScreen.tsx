@@ -85,7 +85,7 @@ export function SetupScreen() {
         <div className="page-header-inner">
           <p className="eyebrow">Reaction Training</p>
 
-          <h1 className="page-title">Foos Trainer 1</h1>
+          <h1 className="page-title">Foos Trainer</h1>
 
           <p className="page-subtitle">
             Train your reaction. Remove anticipation.
