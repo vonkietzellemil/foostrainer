@@ -105,24 +105,72 @@ export function calculateStats(drills: DrillRecord[]): SessionStats {
 }
 
 
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+const textQueue: string[] = [];
+let isPlaying = false;
+
 /**
- * Prepare speech synthesis for mobile browsers.
- *
- * Must be called from a user interaction such as
- * pressing the Start Training button.
+ * Call this directly inside your button click handler.
+ * It activates the engine and starts processing the queue.
  */
 export function unlockSpeech(): void {
   try {
-    const utterance =
-      new SpeechSynthesisUtterance(' ');
-
-    utterance.volume = 0;
-    utterance.rate = 1;
-    utterance.pitch = 1;
-
-    window.speechSynthesis.speak(utterance);
+    // 1. Fire an immediate blank utterance to claim the user gesture context
+    const initialUtterance = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(initialUtterance);
+    
+    // 2. Start the processing loop
+    processQueue();
   } catch (error) {
-    console.error(error);
+    console.error("Failed to unlock speech:", error);
+  }
+}
+
+/**
+ * Safely queues text to be spoken later.
+ */
+export function speakText(text: string): Promise<void> {
+  return new Promise((resolve) => {
+    // Add the text and its resolver to a custom queue
+    textQueue.push(text);
+    
+    // If nothing is playing, kickstart the queue
+    if (!isPlaying) {
+      processQueue();
+    }
+    
+    // For iOS stability, resolve immediately or link to an event listener
+    resolve();
+  });
+}
+
+function processQueue(): void {
+  if (textQueue.length === 0) {
+    isPlaying = false;
+    return;
+  }
+
+  isPlaying = true;
+  const nextText = textQueue.shift();
+
+  if (nextText) {
+    // Cancel any stuck utterances before playing the new one
+    window.speechSynthesis.cancel(); 
+
+    activeUtterance = new SpeechSynthesisUtterance(nextText);
+    activeUtterance.rate = 1.2;
+    activeUtterance.pitch = 1;
+    activeUtterance.volume = 1;
+
+    activeUtterance.onend = () => {
+      processQueue();
+    };
+
+    activeUtterance.onerror = () => {
+      processQueue();
+    };
+
+    window.speechSynthesis.speak(activeUtterance);
   }
 }
 
@@ -198,30 +246,6 @@ export function playAudioCue(): void {
       error
     );
   }
-}
-
-
-/**
- * Speak text using Web Speech API
- */
-export function speakText(text: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      const utterance =
-        new SpeechSynthesisUtterance(text);
-
-      utterance.rate = 1.2;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
-      utterance.onend = () => resolve();
-      utterance.onerror = (error) => reject(error);
-
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      reject(error);
-    }
-  });
 }
 
 
