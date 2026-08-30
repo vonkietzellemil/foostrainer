@@ -1135,6 +1135,30 @@ input:focus-visible {
   line-height: 1.5;
 }
 
+
+
+.training-next-rep {
+  margin-top: 3rem;
+  text-align: center;
+  opacity: 0.65;
+}
+
+.training-next-rep-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.training-next-rep-countdown {
+  margin-top: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+
+
+
+
 /* =========================================================
    MOBILE
    ========================================================= */

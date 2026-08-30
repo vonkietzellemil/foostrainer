@@ -18,6 +18,7 @@ export function TrainingScreen() {
   const {
     currentRep,
     currentDrill,
+    isPreparing,
     isDelaying,
     remainingTime,
     drillsCompleted,
@@ -31,7 +32,7 @@ export function TrainingScreen() {
    * Start the training session.
    */
   useEffect(() => {
-    if (config && isSessionRunning === false) {
+    if (config) {
       const trainer = TRAINERS[config.trainerId];
 
       startSession(
@@ -40,7 +41,7 @@ export function TrainingScreen() {
         trainer.name
       );
     }
-  }, [config, startSession, isSessionRunning]);
+  }, [config, startSession]);
 
   /*
    * Play the cue when the drill becomes visible.
@@ -80,29 +81,9 @@ export function TrainingScreen() {
   ]);
 
   /*
-   * Session completed naturally.
+   * Session completion is handled by the
+   * "End Session" button instead.
    */
-  useEffect(() => {
-    if (
-      !isSessionRunning &&
-      drillsCompleted.length > 0
-    ) {
-      const session = getResults();
-
-      if (session) {
-        addSession(session);
-        setCurrentSession(session);
-        setScreen('results');
-      }
-    }
-  }, [
-    isSessionRunning,
-    drillsCompleted,
-    getResults,
-    addSession,
-    setCurrentSession,
-    setScreen,
-  ]);
 
   const handleStopSession = () => {
     const confirmed = window.confirm(
@@ -120,6 +101,18 @@ export function TrainingScreen() {
       setCurrentSession(session);
       setScreen('results');
     }
+  };
+
+  const handleEndSession = () => {
+    const session = getResults();
+
+    if (!session) {
+      return;
+    }
+
+    addSession(session);
+    setCurrentSession(session);
+    setScreen('results');
   };
 
   /*
@@ -141,14 +134,6 @@ export function TrainingScreen() {
     config.numReps > 0
       ? (currentRep / config.numReps) * 100
       : 0;
-
-  /*
-   * During the preparation phase we show the countdown.
-   *
-   * The random reaction delay remains completely hidden.
-   */
-  const showPreparation =
-    isDelaying && !currentDrill;
 
   return (
     <div
@@ -187,7 +172,8 @@ export function TrainingScreen() {
       <main className="training-main">
         <div className="training-content">
 
-          {showPreparation ? (
+          {/* First preparation / preparation between reps */}
+          {isPreparing && !currentDrill ? (
             <>
               <div className="training-phase">
                 Prepare
@@ -197,15 +183,37 @@ export function TrainingScreen() {
                 {Math.ceil(remainingTime)}
               </div>
             </>
+          ) : isDelaying ? (
+            /* Hidden random reaction delay */
+            <>
+              <div className="training-phase">
+                Get ready
+              </div>
+
+              <div className="training-countdown soft-pulse">
+                ...
+              </div>
+            </>
           ) : currentDrill && currentDrillObj ? (
+            /* Current drill */
             <>
               <div className="training-drill">
                 {currentDrillObj.name}
               </div>
-
-              <div className="training-execute">
-                Execute
-              </div>
+              <div className="training-execute">Execute</div>
+              
+              {/* Preparation for next rep */}
+              {isPreparing && isSessionRunning && (
+                <div className="training-next-rep">
+                  <div className="training-next-rep-label">
+                    Next rep in
+                  </div>
+                  
+                  <div className="training-next-rep-countdown">
+                    {Math.ceil(remainingTime)}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -214,7 +222,7 @@ export function TrainingScreen() {
               </div>
 
               <div className="training-countdown soft-pulse">
-                •••
+                ...
               </div>
             </>
           )}
@@ -222,17 +230,28 @@ export function TrainingScreen() {
         </div>
       </main>
 
+
       {/* =================================================
-          STOP
+          STOP / END SESSION
           ================================================= */}
       <div className="training-stop-area">
-        <button
-          type="button"
-          className="stop-button"
-          onClick={handleStopSession}
-        >
-          Stop Training
-        </button>
+        {!isSessionRunning && drillsCompleted.length > 0 ? (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={handleEndSession}
+          >
+            End Session
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="stop-button"
+            onClick={handleStopSession}
+          >
+            Stop Training
+          </button>
+        )}
       </div>
     </div>
   );

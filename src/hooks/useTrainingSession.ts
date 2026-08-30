@@ -6,11 +6,16 @@ import { TRAINERS } from '../types/trainers';
 interface UseTrainingSessionResult {
   currentRep: number;
   currentDrill: string | null;
+  isPreparing: boolean;
   isDelaying: boolean;
   remainingTime: number;
   drillsCompleted: DrillRecord[];
   isSessionRunning: boolean;
-  startSession: (config: TrainingConfig, trainerId: string, trainerName: string) => void;
+  startSession: (
+    config: TrainingConfig,
+    trainerId: string,
+    trainerName: string
+  ) => void;
   stopSession: () => Session | null;
   getResults: () => Session | null;
 }
@@ -18,7 +23,13 @@ interface UseTrainingSessionResult {
 export function useTrainingSession(): UseTrainingSessionResult {
   const [currentRep, setCurrentRep] = useState(0);
   const [currentDrill, setCurrentDrill] = useState<string | null>(null);
+
+  // Preparation countdown
+  const [isPreparing, setIsPreparing] = useState(false);
+
+  // Random reaction delay
   const [isDelaying, setIsDelaying] = useState(false);
+
   const [remainingTime, setRemainingTime] = useState(0);
   const [drillsCompleted, setDrillsCompleted] = useState<DrillRecord[]>([]);
   const [isSessionRunning, setIsSessionRunning] = useState(false);
@@ -52,54 +63,103 @@ export function useTrainingSession(): UseTrainingSessionResult {
     []
   );
 
-  const scheduleNextRep = (config: TrainingConfig, trainerId: string, repIndex: number) => {
+  const scheduleNextRep = (
+    config: TrainingConfig,
+    trainerId: string,
+    repIndex: number
+  ) => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
 
-    // Schedule preparation interval
-    timerRef.current = setTimeout(() => {
-      // Preparation is over, show "Get Ready"
-      setIsDelaying(true);
-      const randomDelay = getRandomDelay(config.minDelay, config.maxDelay);
-      setRemainingTime(Math.ceil(randomDelay / 1000));
+    // Start preparation phase
+    setIsPreparing(true);
+    setIsDelaying(false);
+    setRemainingTime(config.prepInterval);
 
-      // Schedule drill reveal
-      timerRef.current = setTimeout(() => {
-        const drillId = shuffleBagRef.current!.next();
-        
-        // Find drill name from trainer config
-        const trainer = TRAINERS[trainerId];
-        const drill = trainer.drills.find((d) => d.id === drillId);
-        const drillName = drill ? drill.name : drillId;
-        
-        const drillRecord: DrillRecord = {
-          repNumber: repIndex + 1,
-          drillId,
-          drillName,
-          randomDelay,
-          timestamp: Date.now(),
-        };
+    // Preparation countdown
+    const prepStart = Date.now();
+    const prepDuration = config.prepInterval * 1000;
 
-        drillsCompletedRef.current.push(drillRecord);
-        setDrillsCompleted([...drillsCompletedRef.current]);
-        setCurrentDrill(drillId);
-        setIsDelaying(false);
+    const updatePreparation = () => {
+      const elapsed = Date.now() - prepStart;
+      const remaining = Math.max(
+        0,
+        (prepDuration - elapsed) / 1000
+      );
 
-        // Move to next rep
-        if (repIndex + 1 < config.numReps) {
-          setCurrentRep(repIndex + 2);
-          scheduleNextRep(config, trainerId, repIndex + 1);
-        } else {
-          // Session complete
-          setIsSessionRunning(false);
-          if (sessionRef.current) {
-            sessionRef.current.drills = drillsCompletedRef.current;
-            sessionRef.current.endTime = Date.now();
+      setRemainingTime(remaining);
+
+      if (remaining > 0) {
+        timerRef.current = setTimeout(updatePreparation, 100);
+      } else {
+        // Preparation finished
+        setIsPreparing(false);
+
+        // Start hidden random delay
+        setIsDelaying(true);
+        setRemainingTime(0);
+
+        const randomDelay = getRandomDelay(
+          config.minDelay,
+          config.maxDelay
+        );
+
+        // Reveal drill after random delay
+        timerRef.current = setTimeout(() => {
+          const drillId = shuffleBagRef.current!.next();
+
+          const trainer = TRAINERS[trainerId];
+          const drill = trainer.drills.find(
+            (d) => d.id === drillId
+          );
+
+          const drillName = drill
+            ? drill.name
+            : drillId;
+
+          const drillRecord: DrillRecord = {
+            repNumber: repIndex + 1,
+            drillId,
+            drillName,
+            randomDelay,
+            timestamp: Date.now(),
+          };
+
+          drillsCompletedRef.current.push(drillRecord);
+
+          setDrillsCompleted([
+            ...drillsCompletedRef.current,
+          ]);
+
+          setCurrentDrill(drillId);
+          setIsDelaying(false);
+
+          // Move to next rep
+          if (repIndex + 1 < config.numReps) {
+            setCurrentRep(repIndex + 2);
+
+            scheduleNextRep(
+              config,
+              trainerId,
+              repIndex + 1
+            );
+          } else {
+            // Session complete
+            setIsSessionRunning(false);
+
+            if (sessionRef.current) {
+              sessionRef.current.drills =
+                drillsCompletedRef.current;
+
+              sessionRef.current.endTime = Date.now();
+            }
           }
-        }
-      }, randomDelay);
-    }, config.prepInterval * 1000);
+        }, randomDelay);
+      }
+    };
+
+    timerRef.current = setTimeout(updatePreparation, 0);
   };
 
   const stopSession = useCallback(() => {
@@ -125,6 +185,7 @@ export function useTrainingSession(): UseTrainingSessionResult {
   return {
     currentRep,
     currentDrill,
+    isPreparing,
     isDelaying,
     remainingTime,
     drillsCompleted,
