@@ -113,29 +113,16 @@ export function calculateStats(drills: DrillRecord[]): SessionStats {
  */
 export function unlockSpeech(): void {
   try {
-    if (!('speechSynthesis' in window)) {
-      console.warn(
-        'Speech synthesis is not supported.'
-      );
-      return;
-    }
-
-    // Cancel anything that may already be queued.
-    window.speechSynthesis.cancel();
-
-    // Speak a silent/empty utterance to initialize
-    // the speech engine on some mobile browsers.
     const utterance =
-      new SpeechSynthesisUtterance('');
+      new SpeechSynthesisUtterance(' ');
 
     utterance.volume = 0;
+    utterance.rate = 1;
+    utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
   } catch (error) {
-    console.error(
-      'Could not unlock speech:',
-      error
-    );
+    console.error(error);
   }
 }
 
@@ -217,20 +204,9 @@ export function playAudioCue(): void {
 /**
  * Speak text using Web Speech API
  */
-export function speakText(
-  text: string
-): Promise<void> {
+export function speakText(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      if (!('speechSynthesis' in window)) {
-        reject(
-          new Error(
-            'Speech synthesis is not supported.'
-          )
-        );
-        return;
-      }
-
       const utterance =
         new SpeechSynthesisUtterance(text);
 
@@ -238,35 +214,11 @@ export function speakText(
       utterance.pitch = 1;
       utterance.volume = 1;
 
-      utterance.onend = () => {
-        resolve();
-      };
+      utterance.onend = () => resolve();
+      utterance.onerror = (error) => reject(error);
 
-      utterance.onerror = (event) => {
-        console.error(
-          'Speech synthesis error:',
-          event
-        );
-
-        reject(event);
-      };
-
-      // Cancel anything currently speaking.
-      window.speechSynthesis.cancel();
-
-      // Small delay can help on some mobile browsers
-      // after canceling the previous utterance.
-      window.setTimeout(() => {
-        window.speechSynthesis.speak(
-          utterance
-        );
-      }, 50);
+      window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.error(
-        'Failed to speak text:',
-        error
-      );
-
       reject(error);
     }
   });
