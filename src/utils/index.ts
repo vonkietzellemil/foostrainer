@@ -107,31 +107,76 @@ export function calculateStats(drills: DrillRecord[]): SessionStats {
 /**
  * Play audio cue using Web Audio API
  */
+
+let audioContext: AudioContext | null = null;
+
+export async function unlockAudio(): Promise<void> {
+  try {
+    if (!audioContext) {
+      audioContext = new (
+        window.AudioContext ||
+        (window as any).webkitAudioContext
+      )();
+    }
+
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+  } catch (error) {
+    console.error(
+      'Could not unlock audio:',
+      error
+    );
+  }
+}
+
+/**
+ * Play audio cue using Web Audio API
+ */
 export function playAudioCue(): void {
   try {
-    const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    if (!audioContext) {
+      console.warn(
+        'Audio has not been unlocked yet.'
+      );
+      return;
+    }
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
+    const oscillator =
+      audioContext.createOscillator();
+
+    const gainNode =
+      audioContext.createGain();
 
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    oscillator.frequency.value = 800; // 800 Hz beep
+    oscillator.frequency.value = 800;
     oscillator.type = 'sine';
 
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    const now = audioContext.currentTime;
+
+    gainNode.gain.setValueAtTime(0.3, now);
+
     gainNode.gain.exponentialRampToValueAtTime(
       0.01,
-      audioContext.currentTime + 0.2
+      now + 0.2
     );
 
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.2);
+    oscillator.start(now);
+    oscillator.stop(now + 0.2);
   } catch (error) {
-    console.error('Failed to play audio cue:', error);
+    console.error(
+      'Failed to play audio cue:',
+      error
+    );
   }
 }
+
 
 /**
  * Speak text using Web Speech API

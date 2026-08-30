@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TRAINERS } from '../types/trainers';
 import { useAppContext } from '../context/AppContext';
 import { useTrainingSession } from '../hooks/useTrainingSession';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { playAudioCue, speakText } from '../utils';
 
 export function TrainingScreen() {
@@ -65,7 +66,7 @@ export function TrainingScreen() {
       }
 
       if (config?.visualFlashCue) {
-        setIsScreenFlashing(true);
+        // setIsScreenFlashing(true); Don't flash screen
 
         const timer = window.setTimeout(() => {
           setIsScreenFlashing(false);
@@ -85,6 +86,8 @@ export function TrainingScreen() {
    * "End Session" button instead.
    */
 
+  useWakeLock(isSessionRunning);
+  
   const handleStopSession = () => {
     const confirmed = window.confirm(
       'Stop this training session?'
@@ -200,6 +203,7 @@ export function TrainingScreen() {
               <div className="training-drill">
                 {currentDrillObj.name}
               </div>
+
               <div className="training-execute">Execute</div>
               
               {/* Preparation for next rep */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TRAINERS, DEFAULT_TRAINER_ID } from '../types/trainers';
 import type { TrainingConfig } from '../types';
 import { useAppContext } from '../context/AppContext';
+import { unlockAudio } from '../utils/index.ts';
 
 export function SetupScreen() {
   const { setScreen, setConfig } = useAppContext();
@@ -54,7 +55,7 @@ export function SetupScreen() {
     setSelectedDrills([]);
   };
 
-  const handleStartSession = () => {
+  const handleStartSession = async () => {
     if (selectedDrills.length === 0) {
       alert('Please select at least one drill.');
       return;
@@ -73,6 +74,7 @@ export function SetupScreen() {
     };
 
     setConfig(config);
+    await unlockAudio();
     setScreen('training');
   };
 
@@ -360,7 +362,7 @@ export function SetupScreen() {
                 />
               </label>
 
-              <label className="cue-option">
+              <label className="cue-option" style={{display: 'none',}}>
                 <span className="cue-text">
                   <span className="cue-title">
                     Visual flash
