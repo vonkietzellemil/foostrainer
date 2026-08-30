@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TRAINERS, DEFAULT_TRAINER_ID } from '../types/trainers';
 import type { TrainingConfig } from '../types';
 import { useAppContext } from '../context/AppContext';
-import { unlockAudio } from '../utils/index.ts';
+import { unlockAudio, unlockSpeech } from '../utils';
 
 export function SetupScreen() {
   const { setScreen, setConfig } = useAppContext();
@@ -75,6 +75,7 @@ export function SetupScreen() {
 
     setConfig(config);
     await unlockAudio();
+    unlockSpeech();
     setScreen('training');
   };
 
@@ -84,7 +85,7 @@ export function SetupScreen() {
         <div className="page-header-inner">
           <p className="eyebrow">Reaction Training</p>
 
-          <h1 className="page-title">Foos Trainer</h1>
+          <h1 className="page-title">Foos Trainer 1</h1>
 
           <p className="page-subtitle">
             Train your reaction. Remove anticipation.

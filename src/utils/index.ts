@@ -104,6 +104,42 @@ export function calculateStats(drills: DrillRecord[]): SessionStats {
   };
 }
 
+
+/**
+ * Prepare speech synthesis for mobile browsers.
+ *
+ * Must be called from a user interaction such as
+ * pressing the Start Training button.
+ */
+export function unlockSpeech(): void {
+  try {
+    if (!('speechSynthesis' in window)) {
+      console.warn(
+        'Speech synthesis is not supported.'
+      );
+      return;
+    }
+
+    // Cancel anything that may already be queued.
+    window.speechSynthesis.cancel();
+
+    // Speak a silent/empty utterance to initialize
+    // the speech engine on some mobile browsers.
+    const utterance =
+      new SpeechSynthesisUtterance('');
+
+    utterance.volume = 0;
+
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.error(
+      'Could not unlock speech:',
+      error
+    );
+  }
+}
+
+
 /**
  * Play audio cue using Web Audio API
  */
@@ -181,24 +217,61 @@ export function playAudioCue(): void {
 /**
  * Speak text using Web Speech API
  */
-export function speakText(text: string): Promise<void> {
+export function speakText(
+  text: string
+): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      const utterance = new SpeechSynthesisUtterance(text);
+      if (!('speechSynthesis' in window)) {
+        reject(
+          new Error(
+            'Speech synthesis is not supported.'
+          )
+        );
+        return;
+      }
+
+      const utterance =
+        new SpeechSynthesisUtterance(text);
+
       utterance.rate = 1.2;
       utterance.pitch = 1;
       utterance.volume = 1;
 
-      utterance.onend = () => resolve();
-      utterance.onerror = (error) => reject(error);
+      utterance.onend = () => {
+        resolve();
+      };
 
+      utterance.onerror = (event) => {
+        console.error(
+          'Speech synthesis error:',
+          event
+        );
+
+        reject(event);
+      };
+
+      // Cancel anything currently speaking.
       window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
+
+      // Small delay can help on some mobile browsers
+      // after canceling the previous utterance.
+      window.setTimeout(() => {
+        window.speechSynthesis.speak(
+          utterance
+        );
+      }, 50);
     } catch (error) {
+      console.error(
+        'Failed to speak text:',
+        error
+      );
+
       reject(error);
     }
   });
 }
+
 
 /**
  * Generate random delay within range
